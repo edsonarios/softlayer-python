@@ -20,7 +20,7 @@ def cli(env):
     items = manager.get_bandwidth_pools()
 
     table = formatting.Table([
-        "Id",
+        "Id Bandwidth",
         "Pool Name",
         "Region",
         "Servers",
