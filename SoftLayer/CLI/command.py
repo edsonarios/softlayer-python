@@ -36,32 +36,33 @@ class CommandLoader(click.MultiCommand):
         click.MultiCommand.__init__(self, **attrs)
         self.path = path
         self.highlighter = OptionHighlighter()
-        self.console = utils.console_color_themes(theme=None)
+        self.env = None
+        self.console = None
 
-    def updated_console_whit_theme(self, theme):
-        """Update the console depending on the theme"""
-        # print(theme)
-        self.console = utils.console_color_themes(theme)
+    def ensure_env(self, ctx):
+        """ensures self.env is set"""
+        if self.env is None:
+            self.env = ctx.ensure_object(environment.Environment)
+            self.env.load()
+        if self.console is None:
+            self.console = self.env.console
 
     def list_commands(self, ctx):
         """List all sub-commands."""
-        env = ctx.ensure_object(environment.Environment)
-        env.load()
+        self.ensure_env(ctx)
 
-        return sorted(env.list_commands(*self.path))
+        return sorted(self.env.list_commands(*self.path))
 
     def get_command(self, ctx, cmd_name):
         """Get command for click."""
-        env = ctx.ensure_object(environment.Environment)
-        env.load()
-        self.updated_console_whit_theme(env.theme)
+        self.ensure_env(ctx)
         # Do alias lookup (only available for root commands)
         if len(self.path) == 0:
-            cmd_name = env.resolve_alias(cmd_name)
+            cmd_name = self.env.resolve_alias(cmd_name)
 
         new_path = list(self.path)
         new_path.append(cmd_name)
-        module = env.get_command(*new_path)
+        module = self.env.get_command(*new_path)
         if isinstance(module, types.ModuleType):
             return CommandLoader(*new_path, help=module.__doc__ or '')
         else:
@@ -69,9 +70,7 @@ class CommandLoader(click.MultiCommand):
 
     def format_usage(self, ctx: click.Context, formatter: click.formatting.HelpFormatter) -> None:
         """Formats and colorizes the usage information."""
-        env = ctx.ensure_object(environment.Environment)
-        env.load()
-        self.updated_console_whit_theme(env.theme)
+        self.ensure_env(ctx)
         pieces = self.collect_usage_pieces(ctx)
         for index, piece in enumerate(pieces):
             if piece == "[OPTIONS]":
@@ -157,17 +156,20 @@ class SLCommand(click.Command):
     def __init__(self, **attrs):
         click.Command.__init__(self, **attrs)
         self.highlighter = OptionHighlighter()
-        self.console = utils.console_color_themes(theme=None)
+        self.env = None
+        self.console = None
 
-    def updated_console_whit_theme(self, theme):
-        """Update the console depending on the theme"""
-        self.console = utils.console_color_themes(theme)
+    def ensure_env(self, ctx):
+        """ensures self.env is set"""
+        if self.env is None:
+            self.env = ctx.ensure_object(environment.Environment)
+            self.env.load()
+        if self.console is None:
+            self.console = self.env.console
 
     def format_usage(self, ctx: click.Context, formatter: click.formatting.HelpFormatter) -> None:
         """Formats and colorizes the usage information."""
-        env = ctx.ensure_object(environment.Environment)
-        env.load()
-        self.updated_console_whit_theme(env.theme)
+        self.ensure_env(ctx)
         pieces = self.collect_usage_pieces(ctx)
         for index, piece in enumerate(pieces):
             if piece == "[OPTIONS]":
